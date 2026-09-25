@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import telebot
 
 # ====== الإعدادات ======
-TOKEN = os.environ.get('BOT_TOKEN', '8802065988:AAG2yL7xkxlufanIWhitySYrn0GTFv5D-FA')
+TOKEN = os.environ.get('BOT_TOKEN', '8692960014:AAEpYPo0XTj8F2DmAeUgdaf9_w06MWFYDeI')
 ADMINS = [6843321125]
 
 # ====== البيانات ======
