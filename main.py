@@ -80,7 +80,7 @@ def premium_emoji(text):
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
 
-# ====== دالة إرسال أزرار ملونة ======
+# ====== أزرار ملونة ======
 def make_button(text, callback_data=None, url=None, style=None):
     btn = {"text": text}
     if callback_data:
@@ -92,13 +92,13 @@ def make_button(text, callback_data=None, url=None, style=None):
     return btn
 
 def send_colored(chat_id, text, buttons, parse_mode="HTML"):
-    """إرسال رسالة جديدة بأزرار ملونة"""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": text,
         "parse_mode": parse_mode,
-        "reply_markup": json.dumps({"inline_keyboard": buttons})
+        "reply_markup": json.dumps({"inline_keyboard": buttons}),
+        "api_version": "9.0"
     }
     try:
         r = requests.post(url, json=payload, timeout=15)
@@ -108,13 +108,13 @@ def send_colored(chat_id, text, buttons, parse_mode="HTML"):
         return None
 
 def edit_colored(chat_id, message_id, text, buttons=None, parse_mode="HTML"):
-    """تعديل رسالة موجودة بأزرار ملونة"""
     url = f"https://api.telegram.org/bot{TOKEN}/editMessageText"
     payload = {
         "chat_id": chat_id,
         "message_id": message_id,
         "text": text,
         "parse_mode": parse_mode,
+        "api_version": "9.0"
     }
     if buttons:
         payload["reply_markup"] = json.dumps({"inline_keyboard": buttons})
@@ -125,8 +125,9 @@ def edit_colored(chat_id, message_id, text, buttons=None, parse_mode="HTML"):
         print(f"edit_colored error: {e}")
         return None
 
-# ====== Semaphore (للتحكم في عدد الطلبات) ======
+# ====== إعدادات ======
 MAX_WORKERS = 50
+ZONE = "web_unlocker1"
 
 # ====== الفلاتر ======
 BLOCKED_DOMAINS = [
@@ -136,8 +137,15 @@ BLOCKED_DOMAINS = [
     'yahooapis.com', 'oath.com', 'verizonmedia.com', 'duckduckgo.com',
     'yandex.com', 'yandex.ru', 'yastatic.net', 'yandex.net',
     'baidu.com', 'bdstatic.com', 'bcebos.com', 'bdimg.com',
-    'brave.com', 'startpage.com', 'ecosia.org', 'mojeek.com',
+    'brave.com', 'startpage.com', 'ixquick.com', 'ecosia.org', 'mojeek.com',
     'ask.com', 'aol.com',
+    'qwant.com', 'lite.qwant.com', 'qwantjunior.com',
+    'searx.be', 'searxng.site', 'search.bus-hit.me', 'searx.tiekoetter.com',
+    'baresearch.org', 'yep.com', 'yep.ai',
+    'presearch.com', 'presearch.io', 'search.seznam.cz', 'seznam.cz', 'szn.cz',
+    'naver.com', 'naver.net', 'so.com', 'sogou.com', '360.cn',
+    'petal.com', 'petalsearch.com', 'kagi.com', 'you.com', 'neeva.com',
+    'andisearch.com', 'rightdao.com', 'gigablast.com', 'gibiru.com',
     'youtube.com', 'youtu.be', 'ytimg.com', 'ggpht.com',
     'facebook.com', 'fb.com', 'fbcdn.net', 'facebook.net',
     'twitter.com', 'x.com', 'linkedin.com', 'instagram.com',
@@ -192,6 +200,305 @@ BLOCKED_PATTERNS = [
     r'/track', r'/pixel', r'/beacon', r'/collect', r'/analytics', r'/gtm', r'/gtag',
 ]
 
+# ====== كلمات الفحص بالكرديت (1,300+ كلمة) ======
+CARD_KEYWORDS = [
+    # Credit Card
+    'credit card', 'creditcard', 'credit-card', 'credit_card',
+    'credit card payment', 'credit card number', 'credit card info',
+    'credit card information', 'credit card details', 'credit card checkout',
+    'credit card donation', 'credit card form', 'credit card processing',
+    'credit card accepted', 'credit card required', 'credit cards',
+    'debit card', 'debitcard', 'debit-card', 'debit_card',
+    'debit card payment', 'debit card number',
+    # Card
+    'card payment', 'card-payment', 'card_payment',
+    'card number', 'card-number', 'card_number',
+    'card details', 'card-details', 'card_details',
+    'card info', 'card form', 'card checkout',
+    'card holder', 'card-holder', 'card_holder', 'cardholder',
+    'card type', 'card verification', 'card security',
+    'card expires', 'card expiry', 'card expiration',
+    'card cvv', 'card cvc',
+    'payment card', 'payment-card', 'payment_card',
+    # Pay with Card
+    'pay with card', 'pay-with-card', 'pay_with_card',
+    'pay by card', 'pay-by-card', 'pay_by_card',
+    'pay using card', 'pay via card',
+    'payment with card', 'payment by card', 'payment via card',
+    'card payment method', 'credit card payment method',
+    # CVV/CVC
+    'cvv', 'cvv2', 'cvv code', 'cvc', 'cvc2', 'cvc code',
+    'card verification value', 'card verification code',
+    'security code', 'card security code', 'cvv number', 'cvc number',
+    # Expiry
+    'expiry date', 'expiration date', 'exp date',
+    'expiration', 'expires on', 'valid thru',
+    # Billing
+    'billing address', 'billing info', 'billing information',
+    'billing details', 'billing zip', 'billing postal',
+    'billing form', 'billing page',
+    # Add Payment Method
+    'add payment', 'add-payment', 'add_payment',
+    'add payment method', 'add-payment-method', 'add_payment_method',
+    'add payment methods', 'add new payment method',
+    'add card', 'add-card', 'add_card',
+    'add new card', 'add credit card', 'add debit card',
+    'add payment info', 'add payment details', 'add payment information',
+    'add billing', 'add billing info', 'add billing information',
+    'save card', 'save-card', 'save_card',
+    'save payment', 'save payment method', 'save this card',
+    'store card', 'store payment', 'new card', 'new payment method',
+    'enter card', 'enter-card', 'enter_card',
+    'enter card details', 'enter card number',
+    'enter payment', 'enter payment details',
+    'input card', 'input payment', 'provide card',
+    'submit payment', 'submit card',
+    # Payment Method
+    'payment method', 'payment-method', 'payment_method',
+    'payment methods', 'payment options', 'payment type',
+    'payment info', 'payment information', 'payment details',
+    'payment form', 'payment page', 'payment gateway',
+    'payment processing', 'payment processor', 'payment system',
+    'payment provider', 'payment service', 'payment amount',
+    'payment confirmation', 'payment successful', 'payment failed',
+    'payment pending', 'payment received', 'payment declined',
+    'payment verified', 'payment secure', 'payment secured',
+    'payment step', 'payment window', 'payment portal',
+    'payment interface', 'payment screen', 'payment dialog',
+    'payment modal',
+    # Saved Cards
+    'saved card', 'saved cards', 'saved payment', 'saved payment method',
+    'my cards', 'your cards', 'stored cards',
+    'manage cards', 'manage payment', 'manage payment methods',
+    'update card', 'update payment', 'update payment method',
+    'edit card', 'edit payment', 'change card', 'change payment',
+    'remove card', 'remove payment', 'delete card', 'delete payment',
+    # Cart
+    'cart', 'add to cart', 'add-to-cart', 'add_to_cart',
+    'addtocart', 'add to bag', 'add to basket',
+    'shopping cart', 'shopping-cart', 'shopping_cart',
+    'shopping bag', 'shopping basket', 'your cart', 'your bag',
+    'your basket', 'my cart', 'my bag', 'view cart', 'view bag',
+    'view basket', 'open cart', 'cart is empty', 'empty cart',
+    'cart items', 'cart total', 'cart subtotal', 'cart quantity',
+    'update cart', 'clear cart', 'remove from cart', 'remove from bag',
+    'added to cart', 'item added to cart', 'cart summary',
+    'cart details', 'cart page', 'continue shopping',
+    'proceed to cart', 'go to cart', 'shopping cart page',
+    'basket total', 'bag total', 'cart icon', 'cart button',
+    'cart badge', 'cart count',
+    # Checkout
+    'checkout', 'check-out', 'check_out',
+    'proceed to checkout', 'continue to checkout',
+    'go to checkout', 'start checkout', 'begin checkout',
+    'secure checkout', 'fast checkout', 'quick checkout',
+    'express checkout', 'guest checkout', 'checkout page',
+    'checkout process', 'checkout flow', 'checkout step',
+    'checkout form', 'checkout button', 'checkout now',
+    'complete checkout', 'finish checkout', 'checkout complete',
+    'checkout error', 'checkout success', 'proceed to payment',
+    'proceed to order', 'continue to payment', 'continue to order',
+    # Buy/Purchase/Order
+    'buy', 'buy now', 'buy-now', 'buy_now',
+    'buy it now', 'buy today', 'buy here', 'buy online',
+    'purchase', 'purchase now', 'purchase today',
+    'purchase here', 'purchase this', 'purchase item',
+    'purchase product', 'purchase button',
+    'order', 'order now', 'order today', 'order here',
+    'order online', 'order product', 'order item',
+    'order form', 'order page', 'order button',
+    'order confirmation', 'place order', 'place an order',
+    'submit order', 'confirm order', 'complete order',
+    'finalize order', 'review order', 'order summary',
+    'order details', 'order total', 'order subtotal',
+    'order number', 'order id', 'new order', 'my orders',
+    'your order', 'view order', 'track order',
+    # Donation
+    'donate', 'donating', 'donation', 'donations',
+    'donate now', 'donate-now', 'donate_now',
+    'donate today', 'donate here', 'donate online',
+    'donate securely', 'donate with card',
+    'donate with credit card', 'donate with debit card',
+    'donate button', 'donate page', 'donate form',
+    'make a donation', 'make donation', 'make a gift',
+    'make a contribution', 'give now', 'give today',
+    'give here', 'give online', 'give securely',
+    'give with card', 'give with credit card',
+    'give a gift', 'give to', 'give back',
+    'support us', 'support our', 'support our cause',
+    'support our work', 'support our mission',
+    'help us', 'help support', 'contribute',
+    'contribute now', 'contribute today', 'contribute online',
+    'donation form', 'donation page', 'donation amount',
+    'donation options', 'donation type', 'donation frequency',
+    'donation button', 'donation link', 'donation portal',
+    'donation gateway', 'donation processor', 'donation platform',
+    'donation checkout', 'donation payment', 'donation card',
+    'donation credit card', 'online donation', 'secure donation',
+    'secure donate', 'one time donation', 'one time gift',
+    'monthly donation', 'monthly gift', 'monthly giving',
+    'recurring donation', 'recurring gift', 'recurring giving',
+    'weekly donation', 'annual donation', 'yearly donation',
+    'recurring payment', 'automatic donation', 'auto donation',
+    'donate regularly', 'give regularly', 'set up donation',
+    'start donation', 'donate to', 'give to',
+    'sponsor us', 'sponsor a', 'sponsor now',
+    'become a sponsor', 'become a donor', 'become a supporter',
+    'pledge now', 'make a pledge', 'pledge today',
+    'fund us', 'fund our', 'fund a', 'fund now',
+    'back us', 'back our', 'back this', 'back now',
+    'causes', 'cause', 'support a cause', 'donate to a cause',
+    'charity', 'charities', 'charitable', 'charitable donation',
+    'charity donation', 'gift', 'gifts', 'giving',
+    'gift now', 'send a gift', 'donation receipt',
+    'tax deductible', 'tax deduction', 'nonprofit',
+    'philanthropy', 'philanthropic',
+    # Subscription
+    'subscribe', 'subscription', 'subscribe now',
+    'subscription plan', 'subscription plans', 'subscription price',
+    'subscription fee', 'subscription cost', 'subscription payment',
+    'subscription billing', 'subscription renewal',
+    'subscription cancel', 'subscription upgrade',
+    'monthly subscription', 'yearly subscription',
+    'annual subscription', 'weekly subscription',
+    'premium subscription', 'premium plan', 'premium plans',
+    'premium membership', 'basic plan', 'standard plan',
+    'pro plan', 'business plan', 'enterprise plan',
+    'free plan', 'paid plan', 'choose plan', 'select plan',
+    'upgrade plan', 'upgrade now', 'upgrade to',
+    'upgrade to premium', 'upgrade to pro', 'upgrade account',
+    'downgrade plan', 'change plan', 'switch plan',
+    'cancel plan', 'cancel subscription', 'renew subscription',
+    'renew plan', 'start subscription', 'manage subscription',
+    'subscription status', 'subscription details',
+    'membership', 'become a member', 'join now',
+    'join today', 'join us', 'membership plan',
+    'membership plans', 'membership fee', 'membership cost',
+    'membership price', 'membership payment', 'membership form',
+    'membership page', 'member area', 'member portal',
+    'member login', 'member signup', 'member registration',
+    'sign up now', 'sign up today', 'register now',
+    'create account', 'new account', 'paid membership',
+    'premium access', 'premium features', 'unlock premium',
+    'unlock features', 'unlock now', 'get premium',
+    'get access', 'get started', 'start free trial',
+    'free trial', 'trial period', 'billing cycle',
+    'billing period', 'billing frequency', 'billed monthly',
+    'billed annually', 'billed yearly', 'recurring billing',
+    'auto renew', 'automatic renewal', 'auto renewal',
+    # Products
+    'product', 'products', 'product page', 'product details',
+    'product price', 'product cost', 'product info',
+    'product information', 'product description', 'product image',
+    'product options', 'product variants', 'product variant',
+    'product quantity', 'product stock', 'product availability',
+    'product review', 'product rating', 'buy product',
+    'add product', 'select product', 'choose product',
+    'view product', 'see product', 'more product',
+    'related products', 'similar products', 'featured product',
+    'new product', 'popular product', 'best seller',
+    'bestseller', 'best selling', 'top seller',
+    'on sale', 'sale price', 'discount', 'discounts',
+    'discounted', 'special price', 'special offer',
+    'promo', 'promo code', 'coupon', 'coupon code',
+    'discount code', 'voucher', 'voucher code',
+    'gift card', 'gift cards',
+    'item', 'items', 'item price', 'item quantity',
+    'item total', 'item details', 'add item',
+    'remove item', 'view item', 'select item',
+    'quantity', 'quantity selector', 'select quantity',
+    'unit price', 'price', 'pricing', 'price range',
+    'price tag', 'total price', 'final price',
+    'subtotal', 'grand total', 'total amount',
+    'total cost', 'total due', 'amount due', 'amount to pay',
+    # Payment Actions
+    'make payment', 'make a payment', 'make full payment',
+    'pay now', 'pay today', 'pay here', 'pay online',
+    'pay securely', 'pay safely', 'pay with',
+    'pay with card', 'pay with credit card',
+    'pay by card', 'pay by credit card',
+    'pay using card', 'pay using credit card',
+    'pay via card', 'pay via credit card',
+    'pay in full', 'pay in installments', 'pay in parts',
+    'click to pay', 'continue to pay', 'proceed to pay',
+    'proceed with payment', 'proceed with card',
+    'complete payment', 'complete purchase',
+    'complete transaction', 'finish payment',
+    'finish purchase', 'finalize payment',
+    'finalize purchase', 'confirm payment', 'confirm purchase',
+    'verify payment', 'verify card', 'verify credit card',
+    'validate card', 'validate payment',
+    'submit payment', 'submit card', 'submit card details',
+    'process payment', 'process card', 'process transaction',
+    'authorize payment', 'authorize card',
+    'card authorized', 'payment authorized',
+    'payment approved', 'payment accepted',
+    'payment declined', 'payment rejected', 'payment failed',
+    'payment error', 'payment successful', 'payment success',
+    'payment complete', 'payment completed',
+    'payment confirmation', 'payment confirmed',
+    'payment receipt', 'payment invoice', 'payment reference',
+    'payment id', 'transaction', 'transaction id',
+    'transaction reference', 'transaction details',
+    'transaction history', 'transaction successful',
+    'transaction failed', 'transaction pending',
+    'transaction complete',
+    # Secure
+    'secure payment', 'secure checkout', 'secure transaction',
+    'secure connection', 'secure server', 'ssl secure',
+    'ssl encrypted', 'encrypted payment', 'encrypted transaction',
+    'safe payment', 'safe checkout', 'safe transaction',
+    'safe and secure', 'payment security', 'card security',
+    'data security', 'pci compliant', 'pci dss', 'pci compliance',
+    # Cart UI
+    'cart icon', 'cart button', 'cart link', 'cart counter',
+    'cart count', 'cart badge', 'cart widget', 'cart popup',
+    'cart modal', 'cart drawer', 'cart sidebar', 'cart dropdown',
+    'mini cart', 'small cart', 'floating cart', 'sticky cart',
+    'my bag', 'shopping bag icon', 'bag icon', 'basket icon',
+    # Shopping
+    'shop now', 'shopping', 'shopping online', 'online shopping',
+    'ecommerce', 'e-commerce', 'store', 'stores', 'online store',
+    'shop', 'shops', 'online shop', 'boutique', 'marketplace',
+    'mall', 'online mall', 'catalog', 'catalogue',
+    'browse', 'browse products', 'explore',
+    'find products', 'search products', 'view products',
+    'see products', 'all products', 'new arrivals',
+    'featured items', 'trending', 'trending products',
+    'popular items', 'top picks', 'recommended',
+    'recommended products', 'our products', 'shop collection',
+    'shop by category', 'shop categories',
+    # Wallet
+    'wallet', 'my wallet', 'your wallet', 'account balance',
+    'add funds', 'add money', 'top up', 'top up wallet',
+    'recharge', 'recharge account', 'deposit', 'deposit funds',
+    'add balance', 'fund account', 'transfer funds',
+    'withdraw', 'withdrawal', 'withdraw funds',
+    # General
+    'pay', 'paying', 'paid', 'payment', 'payments',
+    'payment page', 'payment form', 'payment method',
+    'payment type', 'payment option', 'payment gateway',
+    'payment processor', 'payment provider', 'payment service',
+    'payment platform', 'payment system', 'payment solution',
+    'payment integration', 'payment api', 'payment checkout',
+    'payment cart', 'payment button', 'payment link',
+    'payment icon', 'payment portal', 'payment window',
+    'payment modal', 'payment popup', 'payment screen',
+    'payment step', 'payment stage', 'payment flow',
+    'payment path', 'payment route',
+    # Billing Words
+    'billing', 'billing page', 'billing form', 'billing method',
+    'billing details', 'billing info', 'billing information',
+    'billing address', 'billing zip', 'billing postal',
+    'billing country', 'billing state', 'billing city',
+    'billing phone', 'billing email', 'billing name',
+    'billing same as shipping', 'billing different',
+    'billing cycle', 'billing period', 'billing frequency',
+    'billing date', 'billing amount', 'billing total',
+    'billing summary', 'billing history', 'billing receipt',
+    'billing invoice',
+]
+
 def extract_urls(html):
     urls = []
     seen = set()
@@ -230,7 +537,7 @@ def extract_urls(html):
 # ====== جلب الصفحات ======
 def fetch_url(api_key, url):
     try:
-        payload = {'zone': "web_unlocker1", 'url': url, 'format': 'raw'}
+        payload = {'zone': ZONE, 'url': url, 'format': 'raw'}
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {api_key}'
@@ -319,28 +626,120 @@ def search_yahoo(api_key, dork, pages=20):
                 pass
     return list(set(all_urls))
 
+def search_qwant(api_key, dork, pages=30):
+    all_urls = []
+    tasks = []
+    for page in range(pages):
+        url = f'https://lite.qwant.com/?q={urllib.parse.quote(dork)}&t=web&p={page+1}'
+        tasks.append(url)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = [ex.submit(fetch_url, api_key, u) for u in tasks]
+        for f in as_completed(futures):
+            try:
+                html = f.result()
+                if html:
+                    all_urls.extend(extract_urls(html))
+            except:
+                pass
+    return list(set(all_urls))
+
+def search_mojeek(api_key, dork, pages=20):
+    all_urls = []
+    tasks = []
+    for page in range(pages):
+        start = page * 10
+        url = f'https://www.mojeek.com/search?q={urllib.parse.quote(dork)}&s={start}'
+        tasks.append(url)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = [ex.submit(fetch_url, api_key, u) for u in tasks]
+        for f in as_completed(futures):
+            try:
+                html = f.result()
+                if html:
+                    all_urls.extend(extract_urls(html))
+            except:
+                pass
+    return list(set(all_urls))
+
+def search_startpage(api_key, dork, pages=20):
+    all_urls = []
+    tasks = []
+    for page in range(pages):
+        url = f'https://www.startpage.com/sp/search?query={urllib.parse.quote(dork)}&page={page+1}'
+        tasks.append(url)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = [ex.submit(fetch_url, api_key, u) for u in tasks]
+        for f in as_completed(futures):
+            try:
+                html = f.result()
+                if html:
+                    all_urls.extend(extract_urls(html))
+            except:
+                pass
+    return list(set(all_urls))
+
+def search_yep(api_key, dork, pages=20):
+    all_urls = []
+    tasks = []
+    for page in range(pages):
+        url = f'https://yep.com/web?q={urllib.parse.quote(dork)}&page={page+1}'
+        tasks.append(url)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = [ex.submit(fetch_url, api_key, u) for u in tasks]
+        for f in as_completed(futures):
+            try:
+                html = f.result()
+                if html:
+                    all_urls.extend(extract_urls(html))
+            except:
+                pass
+    return list(set(all_urls))
+
+def search_presearch(api_key, dork, pages=20):
+    all_urls = []
+    tasks = []
+    for page in range(pages):
+        url = f'https://presearch.com/search?q={urllib.parse.quote(dork)}&page={page+1}'
+        tasks.append(url)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = [ex.submit(fetch_url, api_key, u) for u in tasks]
+        for f in as_completed(futures):
+            try:
+                html = f.result()
+                if html:
+                    all_urls.extend(extract_urls(html))
+            except:
+                pass
+    return list(set(all_urls))
+
 def search_all_engines(api_key, dork):
     all_urls = []
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=10) as ex:
         futures = [
             ex.submit(search_google, api_key, dork, 30),
             ex.submit(search_bing, api_key, dork, 50),
             ex.submit(search_ddg, api_key, dork, 50),
             ex.submit(search_yahoo, api_key, dork, 20),
+            ex.submit(search_qwant, api_key, dork, 30),
+            ex.submit(search_mojeek, api_key, dork, 20),
+            ex.submit(search_startpage, api_key, dork, 20),
+            ex.submit(search_yep, api_key, dork, 20),
+            ex.submit(search_presearch, api_key, dork, 20),
         ]
         for f in as_completed(futures):
             try:
                 result = f.result()
                 if isinstance(result, list):
                     all_urls.extend(result)
-            except:
+            except Exception as e:
+                print(f"Engine error: {e}")
                 pass
     return list(set(all_urls))
 
-# ====== فحص Cloudflare و Captcha ======
+# ====== فحص Cloudflare/Captcha ======
 def check_cf_captcha(url, api_key):
     try:
-        payload = {'zone': "web_unlocker1", 'url': url, 'format': 'raw'}
+        payload = {'zone': ZONE, 'url': url, 'format': 'raw'}
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {api_key}'
@@ -387,8 +786,22 @@ def check_cf_captcha(url, api_key):
         return url, has_cf, has_captcha
     except:
         return url, False, False
-        
-        # ====== الصلاحيات ======
+
+# ====== فحص الدفع بالكرديت ======
+def check_card(url, api_key):
+    try:
+        html = fetch_url(api_key, url)
+        if not html:
+            return url, False
+        html_lower = html.lower()
+        for kw in CARD_KEYWORDS:
+            if kw in html_lower:
+                return url, True
+        return url, False
+    except:
+        return url, False
+
+# ====== الصلاحيات ======
 def can_use_dork(user_id):
     if user_id in ADMINS:
         return True
@@ -417,6 +830,9 @@ def can_use_mass(user_id):
 
 def can_use_file(user_id):
     return can_use_mass(user_id)
+
+def is_banned(user_id):
+    return BANNED_USERS.get(str(user_id), False)
 
 # ====== البحث الجماعي ======
 def run_mass_search(chat_id, message_id, user_id, dorks):
@@ -465,7 +881,7 @@ def run_mass_search(chat_id, message_id, user_id, dorks):
         except:
             pass
 
-# ====== الفحص (/sex) ======
+# ====== فحص CF/Captcha ======
 def run_sex_check(chat_id, message_id, user_id, urls):
     stop_users[user_id] = False
     if not API_KEYS:
@@ -539,11 +955,64 @@ def run_sex_check(chat_id, message_id, user_id, urls):
         except:
             pass
 
+# ====== فحص الكرديت ======
+def run_card_check(chat_id, message_id, user_id, urls):
+    stop_users[user_id] = False
+    if not API_KEYS:
+        edit_colored(chat_id, message_id, premium_emoji("❌ No API keys available."))
+        return
+    api_key = API_KEYS[0]
+    card_urls = []
+    total_links = len(urls)
+    processed = 0
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = {ex.submit(check_card, u, api_key): u for u in urls}
+        for f in as_completed(futures):
+            if stop_users.get(user_id):
+                break
+            try:
+                url, has_card = f.result()
+            except:
+                url, has_card = "", False
+            if has_card:
+                card_urls.append(url)
+            processed += 1
+            if total_links > 0:
+                progress = (processed / total_links * 100)
+                bar_length = 20
+                filled = int(bar_length * progress / 100)
+                bar = '█' * filled + '░' * (bar_length - filled)
+                if processed % 5 == 0 or processed == total_links:
+                    try:
+                        edit_colored(
+                            chat_id, message_id,
+                            premium_emoji(f"💳 Filter Card\n\n🔗 Card Found: {len(card_urls)}\n\n⏱ Progress: {int(progress)}% {bar}"),
+                            buttons=[[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
+                        )
+                    except:
+                        pass
+    stop_users[user_id] = False
+    if card_urls:
+        filename = f"card_{user_id}.txt"
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(card_urls))
+        with open(filename, 'rb') as f:
+            bot.send_document(chat_id, f, visible_file_name="card_urls.txt")
+        try:
+            os.remove(filename)
+        except:
+            pass
+
 # ====== أوامر البوت ======
 @bot.message_handler(commands=['start'])
 def start_command(message):
     user_id = message.from_user.id
     ALL_USERS.add(user_id)
+    
+    if is_banned(user_id):
+        bot.reply_to(message, premium_emoji("❌ You cannot use this bot. You are banned."), parse_mode="HTML")
+        return
+    
     username = message.from_user.username or message.from_user.first_name or "Unknown"
 
     buttons = [
@@ -551,7 +1020,10 @@ def start_command(message):
             make_button("🔗 Single Dork", callback_data='menu_single', style="primary"),
             make_button("🚀 Mass Dork", callback_data='menu_mass', style="success")
         ],
-        [make_button("🔥 Filter Links", callback_data='menu_sex', style="danger")],
+        [
+            make_button("🔥 Filter Links", callback_data='menu_sex', style="danger"),
+            make_button("💳 Filter Card", callback_data='menu_card', style="danger")
+        ],
         [
             make_button("💳 Keys", callback_data='menu_keys', style="primary"),
             make_button("👥 Users", callback_data='menu_users', style="primary")
@@ -568,10 +1040,11 @@ def start_command(message):
 🔗 /dork - 𝐒𝐢𝐧𝐠𝐥𝐞 𝐒𝐞𝐚𝐫𝐜𝐡
 🚀 /mdork - 𝐌𝐚𝐬𝐬 𝐒𝐞𝐚𝐫𝐜𝐡 (𝐔𝐩 𝐭𝐨 𝟏𝟒𝟎)
 🔥 /sex - 𝐅𝐢𝐥𝐭𝐞𝐫 𝐋𝐢𝐧𝐤𝐬 (𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 & 𝐂𝐚𝐩𝐭𝐜𝐡𝐚)
+💳 /card - 𝐅𝐢𝐥𝐭𝐞𝐫 𝐂𝐚𝐫𝐝 (𝐂𝐫𝐞𝐝𝐢𝐭 𝐂𝐚𝐫𝐝)
 
 📁 𝐒𝐞𝐧𝐝 .𝐭𝐱𝐭
 
-🛠 𝐃𝐞𝐯 ➛ @FAWZY30"""
+🛠 𝐃𝐞𝐯 ➛ @𝐅𝐀𝐖𝐙𝐘𝟑𝟎"""
 
     send_colored(message.chat.id, premium_emoji(welcome_text), buttons)
 
@@ -580,6 +1053,11 @@ def start_command(message):
 def dork_command(message):
     user_id = message.from_user.id
     ALL_USERS.add(user_id)
+    
+    if is_banned(user_id):
+        bot.reply_to(message, premium_emoji("❌ You cannot use this bot. You are banned."), parse_mode="HTML")
+        return
+    
     if not can_use_dork(user_id):
         return
     parts = message.text.split(' ', 1)
@@ -624,6 +1102,11 @@ def dork_command(message):
 def mdork_command(message):
     user_id = message.from_user.id
     ALL_USERS.add(user_id)
+    
+    if is_banned(user_id):
+        bot.reply_to(message, premium_emoji("❌ You cannot use this bot. You are banned."), parse_mode="HTML")
+        return
+    
     if not can_use_mass(user_id):
         bot.reply_to(message, premium_emoji("❌ You cannot use this command because you are not a VIP user."), parse_mode="HTML")
         return
@@ -656,6 +1139,11 @@ def mdork_command(message):
 def sex_command(message):
     user_id = message.from_user.id
     ALL_USERS.add(user_id)
+    
+    if is_banned(user_id):
+        bot.reply_to(message, premium_emoji("❌ You cannot use this bot. You are banned."), parse_mode="HTML")
+        return
+    
     if not can_use_mass(user_id):
         bot.reply_to(message, premium_emoji("❌ You cannot use this command because you are not a VIP user."), parse_mode="HTML")
         return
@@ -692,29 +1180,40 @@ def sex_command(message):
     t.start()
 
 
-@bot.message_handler(content_types=['document'])
-def handle_file(message):
+@bot.message_handler(commands=['card'])
+def card_command(message):
     user_id = message.from_user.id
     ALL_USERS.add(user_id)
-    if not can_use_file(user_id):
+    
+    if is_banned(user_id):
+        bot.reply_to(message, premium_emoji("❌ You cannot use this bot. You are banned."), parse_mode="HTML")
+        return
+    
+    if not can_use_mass(user_id):
         bot.reply_to(message, premium_emoji("❌ You cannot use this command because you are not a VIP user."), parse_mode="HTML")
         return
-    document = message.document
-    if not document.file_name.endswith('.txt'):
-        return
-    try:
-        file_info = bot.get_file(document.file_id)
-        file_content = bot.download_file(file_info.file_path)
-        text = file_content.decode('utf-8', errors='ignore')
-    except Exception as e:
-        print(f"Download error: {e}")
-        return
-    dorks = [line.strip() for line in text.split('\n') if line.strip() and not line.startswith('#')]
-    if not dorks:
-        bot.reply_to(message, premium_emoji("❌ No dorks found in file."), parse_mode="HTML")
+    urls = []
+    if message.reply_to_message and message.reply_to_message.document:
+        try:
+            file_info = bot.get_file(message.reply_to_message.document.file_id)
+            file_content = bot.download_file(file_info.file_path)
+            text = file_content.decode('utf-8', errors='ignore')
+            urls = [line.strip() for line in text.split('\n') if line.strip() and line.strip().startswith('http')]
+        except Exception as e:
+            print(f"File read error: {e}")
+    else:
+        parts = message.text.split(' ', 1)
+        if len(parts) > 1:
+            urls = [a.strip() for a in parts[1].split() if a.strip().startswith('http')]
+    if not urls:
+        bot.reply_to(
+            message,
+            premium_emoji("💡 Usage:\n• Reply to .txt file with /card\n• Or: /card https://url1 https://url2"),
+            parse_mode="HTML"
+        )
         return
 
-    init_text = premium_emoji(f"👁 Mass Dork Search\n\n📊 Dorks: 0/{len(dorks)}\n🔗 Links: 0\n\n⏱ Progress: 0% ░░░░░░░░░░░░░░░░░░░░")
+    init_text = premium_emoji(f"💳 Filter Card\n\n🔗 Card Found: 0\n\n⏱ Progress: 0% ░░░░░░░░░░░░░░░░░░░░")
     buttons = [[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
     resp = send_colored(message.chat.id, init_text, buttons)
     if not resp or not resp.get("ok"):
@@ -722,10 +1221,57 @@ def handle_file(message):
     msg_id = resp["result"]["message_id"]
 
     from threading import Thread
-    t = Thread(target=run_mass_search, args=(message.chat.id, msg_id, user_id, dorks), daemon=True)
+    t = Thread(target=run_card_check, args=(message.chat.id, msg_id, user_id, urls), daemon=True)
     t.start()
+
+
+@bot.message_handler(content_types=['document'])
+def handle_file(message):
+    user_id = message.from_user.id
+    ALL_USERS.add(user_id)
     
-    # ====== أوامر الأدمن ======
+    if is_banned(user_id):
+        bot.reply_to(message, premium_emoji("❌ You cannot use this bot. You are banned."), parse_mode="HTML")
+        return
+    
+    if not can_use_file(user_id):
+        bot.reply_to(message, premium_emoji("❌ You cannot use this command because you are not a VIP user."), parse_mode="HTML")
+        return
+    
+    document = message.document
+    if not document.file_name.endswith('.txt'):
+        return
+    
+    # 3 خيارات
+    buttons = [
+        [make_button("🔍 Search Dorks", callback_data='file_search', style="primary")],
+        [make_button("🔥 Filter Links", callback_data='file_filter', style="danger")],
+        [make_button("💳 Filter Card", callback_data='file_card', style="danger")]
+    ]
+    
+    # خزّن الملف مؤقتاً
+    try:
+        file_info = bot.get_file(document.file_id)
+        file_content = bot.download_file(file_info.file_path)
+        text = file_content.decode('utf-8', errors='ignore')
+    except Exception as e:
+        print(f"Download error: {e}")
+        return
+    
+    # خزنه في متغير مؤقت
+    pending_files[user_id] = text
+    
+    send_colored(
+        message.chat.id,
+        premium_emoji(f"📁 File received: {len(text.splitlines())} lines\n\nWhat do you want to do?"),
+        buttons
+    )
+
+
+# ====== متغير لتخزين الملفات المؤقتة ======
+pending_files = {}
+
+# ====== أوامر الأدمن ======
 @bot.message_handler(commands=['help'])
 def help_command(message):
     user_id = message.from_user.id
@@ -736,14 +1282,17 @@ def help_command(message):
 
 ⚡ /dork - 𝐒𝐢𝐧𝐠𝐥𝐞 𝐒𝐞𝐚𝐫𝐜𝐡
 🚀 /mdork - 𝐌𝐚𝐬𝐬 𝐒𝐞𝐚𝐫𝐜𝐡 (𝐔𝐩 𝐭𝐨 𝟏𝟒𝟎)
-🔥 /sex - 𝐅𝐢𝐥𝐭𝐞𝐫 𝐋𝐢𝐧𝐤𝐬 (𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 & 𝐂𝐚𝐩𝐭𝐜𝐡𝐚)
+🔥 /sex - 𝐅𝐢𝐥𝐭𝐞𝐫 𝐋𝐢𝐧𝐤𝐬
+💳 /card - 𝐅𝐢𝐥𝐭𝐞𝐫 𝐂𝐚𝐫𝐝
 📁 𝐒𝐞𝐧𝐝 .𝐭𝐱𝐭 - 𝐅𝐢𝐥𝐞 𝐒𝐞𝐚𝐫𝐜𝐡
 
-💳 /addkey - 𝐀𝐝𝐝 𝐖𝐞𝐛 𝐔𝐧𝐥𝐨𝐜𝐤𝐞𝐫 𝐊𝐞𝐲
-🔗 /showkey - 𝐒𝐡𝐨𝐰 𝐀𝐥𝐥 𝐊𝐞𝐲𝐬
-👥 /show_users - 𝐒𝐡𝐨𝐰 𝐀𝐥𝐥 𝐔𝐬𝐞𝐫𝐬
-🌟 /addpr - 𝐀𝐝𝐝 𝐕𝐈𝐏 (𝐔𝐬𝐞𝐫/𝐈𝐃 + 𝐃𝐚𝐲𝐬)
-💸 /rmpr - 𝐑𝐞𝐦𝐨𝐯𝐞 𝐕𝐈𝐏 𝐃𝐚𝐲𝐬"""
+💳 /addkey - 𝐀𝐝𝐝 𝐊𝐞𝐲
+🔗 /showkey - 𝐒𝐡𝐨𝐰 𝐊𝐞𝐲𝐬
+👥 /show_users - 𝐒𝐡𝐨𝐰 𝐔𝐬𝐞𝐫𝐬
+🌟 /addprm - 𝐀𝐝𝐝 𝐕𝐈𝐏
+💸 /rmprm - 𝐑𝐞𝐦𝐨𝐯𝐞 𝐕𝐈𝐏
+🚫 /ban_user - 𝐁𝐚𝐧 𝐔𝐬𝐞𝐫
+✅ /unban - 𝐔𝐧𝐛𝐚𝐧 𝐔𝐬𝐞𝐫"""
     bot.reply_to(message, premium_emoji(help_text), parse_mode="HTML")
 
 
@@ -796,15 +1345,15 @@ def show_users_command(message):
     send_colored(message.chat.id, premium_emoji(f"👥 Total Users: {len(users)}"), buttons)
 
 
-@bot.message_handler(commands=['addpr'])
-def addpr_command(message):
+@bot.message_handler(commands=['addprm'])
+def addprm_command(message):
     user_id = message.from_user.id
     if user_id not in ADMINS:
         bot.reply_to(message, premium_emoji("❌ You cannot use this command because it is only for admin."), parse_mode="HTML")
         return
     parts = message.text.split()
     if len(parts) < 3:
-        bot.reply_to(message, premium_emoji("💡 Usage: /addpr user_id days"), parse_mode="HTML")
+        bot.reply_to(message, premium_emoji("💡 Usage: /addprm user_id days"), parse_mode="HTML")
         return
     try:
         target_user = str(parts[1])
@@ -818,34 +1367,58 @@ def addpr_command(message):
     bot.reply_to(message, premium_emoji(f"✅ VIP added!\n👤 User: {target_user}\n⏱ Days: {days}"), parse_mode="HTML")
 
 
-@bot.message_handler(commands=['rmpr'])
-def rmpr_command(message):
+@bot.message_handler(commands=['rmprm'])
+def rmprm_command(message):
     user_id = message.from_user.id
     if user_id not in ADMINS:
         bot.reply_to(message, premium_emoji("❌ You cannot use this command because it is only for admin."), parse_mode="HTML")
         return
     parts = message.text.split()
-    if len(parts) < 3:
-        bot.reply_to(message, premium_emoji("💡 Usage: /rmpr user_id days"), parse_mode="HTML")
+    if len(parts) < 2:
+        bot.reply_to(message, premium_emoji("💡 Usage: /rmprm user_id"), parse_mode="HTML")
         return
-    try:
-        target_user = str(parts[1])
-        days = int(parts[2])
-    except:
-        bot.reply_to(message, premium_emoji("❌ Invalid input."), parse_mode="HTML")
-        return
+    target_user = str(parts[1])
     if target_user in VIP_USERS:
-        try:
-            expiry = datetime.fromisoformat(VIP_USERS[target_user])
-            new_expiry = expiry - timedelta(days=days)
-            if new_expiry <= datetime.now():
-                del VIP_USERS[target_user]
-            else:
-                VIP_USERS[target_user] = new_expiry.isoformat()
-            save_data()
-        except:
-            pass
-    bot.reply_to(message, premium_emoji(f"✅ VIP days removed!\n👤 User: {target_user}\n⏱ Days removed: {days}"), parse_mode="HTML")
+        del VIP_USERS[target_user]
+        save_data()
+        bot.reply_to(message, premium_emoji(f"✅ VIP removed!\n👤 User: {target_user}"), parse_mode="HTML")
+    else:
+        bot.reply_to(message, premium_emoji(f"❌ User {target_user} is not VIP."), parse_mode="HTML")
+
+
+@bot.message_handler(commands=['ban_user'])
+def ban_user_command(message):
+    user_id = message.from_user.id
+    if user_id not in ADMINS:
+        bot.reply_to(message, premium_emoji("❌ You cannot use this command because it is only for admin."), parse_mode="HTML")
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.reply_to(message, premium_emoji("💡 Usage: /ban_user user_id"), parse_mode="HTML")
+        return
+    target_user = str(parts[1])
+    BANNED_USERS[target_user] = True
+    save_data()
+    bot.reply_to(message, premium_emoji(f"✅ User banned!\n👤 User: {target_user}"), parse_mode="HTML")
+
+
+@bot.message_handler(commands=['unban'])
+def unban_command(message):
+    user_id = message.from_user.id
+    if user_id not in ADMINS:
+        bot.reply_to(message, premium_emoji("❌ You cannot use this command because it is only for admin."), parse_mode="HTML")
+        return
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.reply_to(message, premium_emoji("💡 Usage: /unban user_id"), parse_mode="HTML")
+        return
+    target_user = str(parts[1])
+    if target_user in BANNED_USERS:
+        del BANNED_USERS[target_user]
+        save_data()
+        bot.reply_to(message, premium_emoji(f"✅ User unbanned!\n👤 User: {target_user}"), parse_mode="HTML")
+    else:
+        bot.reply_to(message, premium_emoji(f"❌ User {target_user} is not banned."), parse_mode="HTML")
 
 
 # ====== معالج الأزرار ======
@@ -857,6 +1430,13 @@ def button_callback(call):
         bot.answer_callback_query(call.id)
     except:
         pass
+    
+    if is_banned(user_id):
+        try:
+            bot.send_message(call.message.chat.id, premium_emoji("❌ You cannot use this bot. You are banned."), parse_mode="HTML")
+        except:
+            pass
+        return
 
     if data == "menu_single":
         bot.send_message(call.message.chat.id, premium_emoji("🔗 Send your dork:\n<code>/dork intext:\"payment\" inurl:donate</code>"), parse_mode="HTML")
@@ -865,10 +1445,73 @@ def button_callback(call):
         bot.send_message(call.message.chat.id, premium_emoji("🚀 Send dorks after /mdork command:\nMax 140 dorks\n\nExample:\n/mdork\ndork1\ndork2\ndork3"), parse_mode="HTML")
 
     elif data == "menu_file":
-        bot.send_message(call.message.chat.id, premium_emoji("📁 Send a .txt file with dorks (one per line)"), parse_mode="HTML")
+        bot.send_message(call.message.chat.id, premium_emoji("📁 Send a .txt file with dorks or links"), parse_mode="HTML")
 
     elif data == "menu_sex":
         bot.send_message(call.message.chat.id, premium_emoji("🔥 Filter Links\n\nSend .txt file with links (reply + /sex)\nOr: /sex https://url1 https://url2\n\nResult: 3 files (clean + cloudflare + captcha)"), parse_mode="HTML")
+
+    elif data == "menu_card":
+        bot.send_message(call.message.chat.id, premium_emoji("💳 Filter Card\n\nSend .txt file with links (reply + /card)\nOr: /card https://url1 https://url2\n\nResult: card_urls.txt (sites with credit card payment)"), parse_mode="HTML")
+
+    elif data == "file_search":
+        text = pending_files.get(user_id, "")
+        if not text:
+            bot.send_message(call.message.chat.id, premium_emoji("❌ File expired."), parse_mode="HTML")
+            return
+        dorks = [line.strip() for line in text.split('\n') if line.strip() and not line.startswith('#') and not line.startswith('http')]
+        if not dorks:
+            bot.send_message(call.message.chat.id, premium_emoji("❌ No dorks found in file."), parse_mode="HTML")
+            return
+        init_text = premium_emoji(f"👁 Mass Dork Search\n\n📊 Dorks: 0/{len(dorks)}\n🔗 Links: 0\n\n⏱ Progress: 0% ░░░░░░░░░░░░░░░░░░░░")
+        buttons = [[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
+        resp = send_colored(call.message.chat.id, init_text, buttons)
+        if not resp or not resp.get("ok"):
+            return
+        msg_id = resp["result"]["message_id"]
+        from threading import Thread
+        t = Thread(target=run_mass_search, args=(call.message.chat.id, msg_id, user_id, dorks), daemon=True)
+        t.start()
+        del pending_files[user_id]
+
+    elif data == "file_filter":
+        text = pending_files.get(user_id, "")
+        if not text:
+            bot.send_message(call.message.chat.id, premium_emoji("❌ File expired."), parse_mode="HTML")
+            return
+        urls = [line.strip() for line in text.split('\n') if line.strip().startswith('http')]
+        if not urls:
+            bot.send_message(call.message.chat.id, premium_emoji("❌ No links found in file."), parse_mode="HTML")
+            return
+        init_text = premium_emoji(f"🔥 Filter Links\n\n🔗 Clean: 0\n🛡 Cloudflare: 0\n👁 Captcha: 0\n\n⏱ Progress: 0% ░░░░░░░░░░░░░░░░░░░░")
+        buttons = [[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
+        resp = send_colored(call.message.chat.id, init_text, buttons)
+        if not resp or not resp.get("ok"):
+            return
+        msg_id = resp["result"]["message_id"]
+        from threading import Thread
+        t = Thread(target=run_sex_check, args=(call.message.chat.id, msg_id, user_id, urls), daemon=True)
+        t.start()
+        del pending_files[user_id]
+
+    elif data == "file_card":
+        text = pending_files.get(user_id, "")
+        if not text:
+            bot.send_message(call.message.chat.id, premium_emoji("❌ File expired."), parse_mode="HTML")
+            return
+        urls = [line.strip() for line in text.split('\n') if line.strip().startswith('http')]
+        if not urls:
+            bot.send_message(call.message.chat.id, premium_emoji("❌ No links found in file."), parse_mode="HTML")
+            return
+        init_text = premium_emoji(f"💳 Filter Card\n\n🔗 Card Found: 0\n\n⏱ Progress: 0% ░░░░░░░░░░░░░░░░░░░░")
+        buttons = [[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
+        resp = send_colored(call.message.chat.id, init_text, buttons)
+        if not resp or not resp.get("ok"):
+            return
+        msg_id = resp["result"]["message_id"]
+        from threading import Thread
+        t = Thread(target=run_card_check, args=(call.message.chat.id, msg_id, user_id, urls), daemon=True)
+        t.start()
+        del pending_files[user_id]
 
     elif data == "stop_search":
         chat_id = call.message.chat.id
