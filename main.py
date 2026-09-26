@@ -18,6 +18,7 @@ BANNED_USERS = {}
 ALL_USERS = set()
 API_KEYS = ["a65409df-86c7-4d26-9510-3aea809bd8e6"]
 stop_users = {}
+pending_files = {}
 
 DATA_FILE = "dorker_data.json"
 
@@ -125,6 +126,55 @@ def edit_colored(chat_id, message_id, text, buttons=None, parse_mode="HTML"):
         print(f"edit_colored error: {e}")
         return None
 
+# ====== Safe Edit (Rate Limit Handler) ======
+def safe_edit(chat_id, message_id, text, buttons=None):
+    """تعديل آمن مع التعامل مع Rate Limit"""
+    try:
+        result = edit_colored(chat_id, message_id, text, buttons)
+        if result and result.get("ok"):
+            return True
+        if result and result.get("error_code") == 429:
+            retry_after = 30
+            try:
+                params = result.get("parameters", {})
+                retry_after = params.get("retry_after", 30)
+            except:
+                pass
+            print(f"⚠️ Rate limit - waiting {retry_after}s")
+            time.sleep(retry_after)
+        return False
+    except Exception as e:
+        print(f"safe_edit error: {e}")
+        return False
+
+# ====== Safe Send Document ======
+def safe_send_doc(chat_id, filename, visible_name, caption=None, retries=3):
+    """إرسال ملف آمن مع Retry"""
+    for attempt in range(retries):
+        try:
+            with open(filename, 'rb') as f:
+                if caption:
+                    bot.send_document(chat_id, f, visible_file_name=visible_name, caption=caption)
+                else:
+                    bot.send_document(chat_id, f, visible_file_name=visible_name)
+            return True
+        except telebot.apihelper.ApiTelegramException as e:
+            if e.error_code == 429:
+                retry_after = 30
+                try:
+                    if e.result_json and 'parameters' in e.result_json:
+                        retry_after = e.result_json['parameters'].get('retry_after', 30)
+                except:
+                    pass
+                print(f"⚠️ Rate limit on doc - waiting {retry_after}s")
+                time.sleep(retry_after)
+            else:
+                time.sleep(3)
+        except Exception as e:
+            print(f"safe_send_doc error: {e}")
+            time.sleep(3)
+    return False
+
 # ====== إعدادات ======
 MAX_WORKERS = 50
 ZONE = "web_unlocker1"
@@ -200,7 +250,7 @@ BLOCKED_PATTERNS = [
     r'/track', r'/pixel', r'/beacon', r'/collect', r'/analytics', r'/gtm', r'/gtag',
 ]
 
-# ====== كلمات الفحص بالكرديت (1,300+ كلمة) ======
+# ====== كلمات الفحص بالكرديت ======
 CARD_KEYWORDS = [
     # Credit Card
     'credit card', 'creditcard', 'credit-card', 'credit_card',
@@ -787,7 +837,7 @@ def check_cf_captcha(url, api_key):
     except:
         return url, False, False
 
-# ====== فحص الدفع بالكرديت ======
+# ====== فحص الكرديت ======
 def check_card(url, api_key):
     try:
         html = fetch_url(api_key, url)
@@ -838,13 +888,14 @@ def is_banned(user_id):
 def run_mass_search(chat_id, message_id, user_id, dorks):
     stop_users[user_id] = False
     if not API_KEYS:
-        edit_colored(chat_id, message_id, premium_emoji("❌ No API keys available."))
+        safe_edit(chat_id, message_id, premium_emoji("❌ No API keys available."))
         return
     api_key = API_KEYS[0]
     all_urls = []
     total_dorks = len(dorks)
     processed_dorks = 0
     total_links_found = 0
+    last_edit = time.time()
     for dork in dorks:
         if stop_users.get(user_id):
             break
@@ -853,18 +904,18 @@ def run_mass_search(chat_id, message_id, user_id, dorks):
             all_urls.extend(urls)
             total_links_found += len(urls)
             processed_dorks += 1
-            progress = (processed_dorks / total_dorks * 100)
-            bar_length = 20
-            filled = int(bar_length * progress / 100)
-            bar = '█' * filled + '░' * (bar_length - filled)
-            try:
-                edit_colored(
+            now = time.time()
+            if now - last_edit >= 2:
+                progress = (processed_dorks / total_dorks * 100)
+                bar_length = 20
+                filled = int(bar_length * progress / 100)
+                bar = '█' * filled + '░' * (bar_length - filled)
+                safe_edit(
                     chat_id, message_id,
                     premium_emoji(f"👁 Mass Dork Search\n\n📊 Dorks: {processed_dorks}/{total_dorks}\n🔗 Links: {total_links_found}\n\n⏱ Progress: {int(progress)}% {bar}"),
                     buttons=[[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
                 )
-            except:
-                pass
+                last_edit = now
         except Exception as e:
             print(f"Error on dork: {e}")
             continue
@@ -874,8 +925,7 @@ def run_mass_search(chat_id, message_id, user_id, dorks):
         filename = f"results_{user_id}.txt"
         with open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(all_urls))
-        with open(filename, 'rb') as f:
-            bot.send_document(chat_id, f, visible_file_name="dork_results.txt")
+        safe_send_doc(chat_id, filename, "dork_results.txt")
         try:
             os.remove(filename)
         except:
@@ -885,7 +935,7 @@ def run_mass_search(chat_id, message_id, user_id, dorks):
 def run_sex_check(chat_id, message_id, user_id, urls):
     stop_users[user_id] = False
     if not API_KEYS:
-        edit_colored(chat_id, message_id, premium_emoji("❌ No API keys available."))
+        safe_edit(chat_id, message_id, premium_emoji("❌ No API keys available."))
         return
     api_key = API_KEYS[0]
     all_clean = []
@@ -893,6 +943,7 @@ def run_sex_check(chat_id, message_id, user_id, urls):
     all_captcha = []
     total_links = len(urls)
     processed = 0
+    last_edit = time.time()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
         futures = {ex.submit(check_cf_captcha, u, api_key): u for u in urls}
         for f in as_completed(futures):
@@ -910,46 +961,45 @@ def run_sex_check(chat_id, message_id, user_id, urls):
                 all_clean.append(url)
             processed += 1
             if total_links > 0:
-                progress = (processed / total_links * 100)
-                bar_length = 20
-                filled = int(bar_length * progress / 100)
-                bar = '█' * filled + '░' * (bar_length - filled)
-                if processed % 5 == 0 or processed == total_links:
-                    try:
-                        edit_colored(
-                            chat_id, message_id,
-                            premium_emoji(f"🔥 Filter Links\n\n🔗 Clean: {len(all_clean)}\n🛡 Cloudflare: {len(all_cf)}\n👁 Captcha: {len(all_captcha)}\n\n⏱ Progress: {int(progress)}% {bar}"),
-                            buttons=[[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
-                        )
-                    except:
-                        pass
+                now = time.time()
+                if (processed % 25 == 0 or processed == total_links) and (now - last_edit >= 2):
+                    progress = (processed / total_links * 100)
+                    bar_length = 20
+                    filled = int(bar_length * progress / 100)
+                    bar = '█' * filled + '░' * (bar_length - filled)
+                    safe_edit(
+                        chat_id, message_id,
+                        premium_emoji(f"🔥 Filter Links\n\n🔗 Clean: {len(all_clean)}\n🛡 Cloudflare: {len(all_cf)}\n👁 Captcha: {len(all_captcha)}\n\n⏱ Progress: {int(progress)}% {bar}"),
+                        buttons=[[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
+                    )
+                    last_edit = now
+                    time.sleep(0.5)
     stop_users[user_id] = False
     if all_clean:
         filename = f"clean_{user_id}.txt"
         with open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(all_clean))
-        with open(filename, 'rb') as f:
-            bot.send_document(chat_id, f, visible_file_name="clean_urls.txt")
+        safe_send_doc(chat_id, filename, "clean_urls.txt")
         try:
             os.remove(filename)
         except:
             pass
+        time.sleep(1)
     if all_cf:
         filename = f"cf_{user_id}.txt"
         with open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(all_cf))
-        with open(filename, 'rb') as f:
-            bot.send_document(chat_id, f, visible_file_name="cloudflare_urls.txt")
+        safe_send_doc(chat_id, filename, "cloudflare_urls.txt")
         try:
             os.remove(filename)
         except:
             pass
+        time.sleep(1)
     if all_captcha:
         filename = f"captcha_{user_id}.txt"
         with open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(all_captcha))
-        with open(filename, 'rb') as f:
-            bot.send_document(chat_id, f, visible_file_name="captcha_urls.txt")
+        safe_send_doc(chat_id, filename, "captcha_urls.txt")
         try:
             os.remove(filename)
         except:
@@ -959,12 +1009,13 @@ def run_sex_check(chat_id, message_id, user_id, urls):
 def run_card_check(chat_id, message_id, user_id, urls):
     stop_users[user_id] = False
     if not API_KEYS:
-        edit_colored(chat_id, message_id, premium_emoji("❌ No API keys available."))
+        safe_edit(chat_id, message_id, premium_emoji("❌ No API keys available."))
         return
     api_key = API_KEYS[0]
     card_urls = []
     total_links = len(urls)
     processed = 0
+    last_edit = time.time()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
         futures = {ex.submit(check_card, u, api_key): u for u in urls}
         for f in as_completed(futures):
@@ -978,26 +1029,25 @@ def run_card_check(chat_id, message_id, user_id, urls):
                 card_urls.append(url)
             processed += 1
             if total_links > 0:
-                progress = (processed / total_links * 100)
-                bar_length = 20
-                filled = int(bar_length * progress / 100)
-                bar = '█' * filled + '░' * (bar_length - filled)
-                if processed % 5 == 0 or processed == total_links:
-                    try:
-                        edit_colored(
-                            chat_id, message_id,
-                            premium_emoji(f"💳 Filter Card\n\n🔗 Card Found: {len(card_urls)}\n\n⏱ Progress: {int(progress)}% {bar}"),
-                            buttons=[[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
-                        )
-                    except:
-                        pass
+                now = time.time()
+                if (processed % 25 == 0 or processed == total_links) and (now - last_edit >= 2):
+                    progress = (processed / total_links * 100)
+                    bar_length = 20
+                    filled = int(bar_length * progress / 100)
+                    bar = '█' * filled + '░' * (bar_length - filled)
+                    safe_edit(
+                        chat_id, message_id,
+                        premium_emoji(f"💳 Filter Card\n\n🔗 Card Found: {len(card_urls)}\n📊 Checked: {processed}/{total_links}\n\n⏱ Progress: {int(progress)}% {bar}"),
+                        buttons=[[make_button("🛑 Stop", callback_data='stop_search', style="danger")]]
+                    )
+                    last_edit = now
+                    time.sleep(0.5)
     stop_users[user_id] = False
     if card_urls:
         filename = f"card_{user_id}.txt"
         with open(filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(card_urls))
-        with open(filename, 'rb') as f:
-            bot.send_document(chat_id, f, visible_file_name="card_urls.txt")
+        safe_send_doc(chat_id, filename, "card_urls.txt")
         try:
             os.remove(filename)
         except:
@@ -1080,8 +1130,7 @@ def dork_command(message):
         except:
             pass
         bot.reply_to(message, premium_emoji(f"✅ Search Complete!\n🔗 {len(urls)} links found"), parse_mode="HTML")
-        with open(filename, 'rb') as f:
-            bot.send_document(message.chat.id, f, visible_file_name="dork_results.txt")
+        safe_send_doc(message.chat.id, filename, "dork_results.txt")
         try:
             os.remove(filename)
         except:
@@ -1242,14 +1291,12 @@ def handle_file(message):
     if not document.file_name.endswith('.txt'):
         return
     
-    # 3 خيارات
     buttons = [
         [make_button("🔍 Search Dorks", callback_data='file_search', style="primary")],
         [make_button("🔥 Filter Links", callback_data='file_filter', style="danger")],
         [make_button("💳 Filter Card", callback_data='file_card', style="danger")]
     ]
     
-    # خزّن الملف مؤقتاً
     try:
         file_info = bot.get_file(document.file_id)
         file_content = bot.download_file(file_info.file_path)
@@ -1258,7 +1305,6 @@ def handle_file(message):
         print(f"Download error: {e}")
         return
     
-    # خزنه في متغير مؤقت
     pending_files[user_id] = text
     
     send_colored(
@@ -1267,9 +1313,6 @@ def handle_file(message):
         buttons
     )
 
-
-# ====== متغير لتخزين الملفات المؤقتة ======
-pending_files = {}
 
 # ====== أوامر الأدمن ======
 @bot.message_handler(commands=['help'])
@@ -1451,7 +1494,7 @@ def button_callback(call):
         bot.send_message(call.message.chat.id, premium_emoji("🔥 Filter Links\n\nSend .txt file with links (reply + /sex)\nOr: /sex https://url1 https://url2\n\nResult: 3 files (clean + cloudflare + captcha)"), parse_mode="HTML")
 
     elif data == "menu_card":
-        bot.send_message(call.message.chat.id, premium_emoji("💳 Filter Card\n\nSend .txt file with links (reply + /card)\nOr: /card https://url1 https://url2\n\nResult: card_urls.txt (sites with credit card payment)"), parse_mode="HTML")
+        bot.send_message(call.message.chat.id, premium_emoji("💳 Filter Card\n\nSend .txt file with links (reply + /card)\nOr: /card https://url1 https://url2\n\nResult: card_urls.txt"), parse_mode="HTML")
 
     elif data == "file_search":
         text = pending_files.get(user_id, "")
@@ -1471,7 +1514,8 @@ def button_callback(call):
         from threading import Thread
         t = Thread(target=run_mass_search, args=(call.message.chat.id, msg_id, user_id, dorks), daemon=True)
         t.start()
-        del pending_files[user_id]
+        if user_id in pending_files:
+            del pending_files[user_id]
 
     elif data == "file_filter":
         text = pending_files.get(user_id, "")
@@ -1491,7 +1535,8 @@ def button_callback(call):
         from threading import Thread
         t = Thread(target=run_sex_check, args=(call.message.chat.id, msg_id, user_id, urls), daemon=True)
         t.start()
-        del pending_files[user_id]
+        if user_id in pending_files:
+            del pending_files[user_id]
 
     elif data == "file_card":
         text = pending_files.get(user_id, "")
@@ -1511,7 +1556,8 @@ def button_callback(call):
         from threading import Thread
         t = Thread(target=run_card_check, args=(call.message.chat.id, msg_id, user_id, urls), daemon=True)
         t.start()
-        del pending_files[user_id]
+        if user_id in pending_files:
+            del pending_files[user_id]
 
     elif data == "stop_search":
         chat_id = call.message.chat.id
