@@ -126,9 +126,7 @@ def edit_colored(chat_id, message_id, text, buttons=None, parse_mode="HTML"):
         print(f"edit_colored error: {e}")
         return None
 
-# ====== Safe Edit (Rate Limit Handler) ======
 def safe_edit(chat_id, message_id, text, buttons=None):
-    """تعديل آمن مع التعامل مع Rate Limit"""
     try:
         result = edit_colored(chat_id, message_id, text, buttons)
         if result and result.get("ok"):
@@ -147,9 +145,7 @@ def safe_edit(chat_id, message_id, text, buttons=None):
         print(f"safe_edit error: {e}")
         return False
 
-# ====== Safe Send Document ======
 def safe_send_doc(chat_id, filename, visible_name, caption=None, retries=3):
-    """إرسال ملف آمن مع Retry"""
     for attempt in range(retries):
         try:
             with open(filename, 'rb') as f:
@@ -177,10 +173,11 @@ def safe_send_doc(chat_id, filename, visible_name, caption=None, retries=3):
 
 # ====== إعدادات ======
 MAX_WORKERS = 50
-ZONE = "web_unlocker1"
+ZONE = "web_unlocker2"
 
 # ====== الفلاتر ======
 BLOCKED_DOMAINS = [
+    # محركات البحث
     'google.com', 'google.co', 'googleapis.com', 'googleusercontent.com',
     'google-analytics.com', 'googletagmanager.com', 'googleadservices.com',
     'doubleclick.net', 'bing.com', 'msn.com', 'yahoo.com', 'yimg.com',
@@ -190,18 +187,14 @@ BLOCKED_DOMAINS = [
     'brave.com', 'startpage.com', 'ixquick.com', 'ecosia.org', 'mojeek.com',
     'ask.com', 'aol.com',
     'qwant.com', 'lite.qwant.com', 'qwantjunior.com',
-    'searx.be', 'searxng.site', 'search.bus-hit.me', 'searx.tiekoetter.com',
-    'baresearch.org', 'yep.com', 'yep.ai',
-    'presearch.com', 'presearch.io', 'search.seznam.cz', 'seznam.cz', 'szn.cz',
-    'naver.com', 'naver.net', 'so.com', 'sogou.com', '360.cn',
-    'petal.com', 'petalsearch.com', 'kagi.com', 'you.com', 'neeva.com',
-    'andisearch.com', 'rightdao.com', 'gigablast.com', 'gibiru.com',
+    # سوشيال ميديا
     'youtube.com', 'youtu.be', 'ytimg.com', 'ggpht.com',
     'facebook.com', 'fb.com', 'fbcdn.net', 'facebook.net',
     'twitter.com', 'x.com', 'linkedin.com', 'instagram.com',
     'pinterest.com', 'tiktok.com', 'reddit.com', 'tumblr.com',
     'snapchat.com', 'telegram.org', 't.me', 'whatsapp.com',
     'wa.me', 'discord.com', 'discord.gg',
+    # مواقع معروفة
     'wikipedia.org', 'wikimedia.org', 'amazon.com', 'ebay.com',
     'apple.com', 'microsoft.com', 'windows.com', 'windowsupdate.com',
     'azure.com', 'azurewebsites.net', 'cloudapp.azure.com',
@@ -215,25 +208,30 @@ BLOCKED_DOMAINS = [
     'trustpilot.com', 'yelp.com', 'bbb.org', 'glassdoor.com',
     'indeed.com', 'ziprecruiter.com', 'monster.com', 'careerbuilder.com',
     'dice.com',
+    # CDNs
     'akamaihd.net', 'cloudfront.net', 'cdnjs.cloudflare.com',
     'jsdelivr.net', 'unpkg.com', 'bootstrapcdn.com', 'jquery.com',
     'fontawesome.com', 'getbootstrap.com', 'wixstatic.com', 'wp.com',
     'cloudinary.com', 'imgix.net', 'fastly.net', 'maxcdn.com',
     'stackpath.com', 'keycdn.com', 'statically.io', 'gitcdn.xyz',
     'rawgit.com',
+    # Consent
     'onetrust.com', 'cookiebot.com', 'trustarc.com',
     'usercentrics.com', 'quantcast.com', 'cookielaw.org',
     'cookieyes.com', 'termly.io', 'iubenda.com', 'osano.com',
+    # إعلانات وتتبع
     'adsense.google.com', 'adservice.google.com', 'googleads.com',
     'hotjar.com', 'mixpanel.com', 'segment.com', 'amplitude.com',
     'sentry.io', 'newrelic.com', 'datadoghq.com', 'bugsnag.com',
     'rollbar.com', 'logrocket.com', 'fullstory.com', 'clarity.ms',
     'mouseflow.com', 'crazyegg.com', 'optimizely.com', 'vwo.com',
     'hubspot.com', 'marketo.com', 'mailchimp.com',
+    # خدمات تانية
     'goo.gl', 'bit.ly', 'tinyurl.com', 'shorturl.at', 'ow.ly',
     'buff.ly', 'is.gd', 'v.gd', 'rb.gy', 'cutt.ly',
     'paypal.com', 'stripe.com', 'square.com', 'venmo.com',
     'cash.app', 'wise.com', 'revolut.com',
+    # بريد
     'gmail.com', 'mail.google.com', 'protonmail.com',
     'proton.me', 'zoho.com', 'yandex.mail', 'mail.ru',
 ]
@@ -250,7 +248,7 @@ BLOCKED_PATTERNS = [
     r'/track', r'/pixel', r'/beacon', r'/collect', r'/analytics', r'/gtm', r'/gtag',
 ]
 
-# ====== كلمات الفحص بالكرديت ======
+# ====== كلمات الكرديت ======
 CARD_KEYWORDS = [
     # Credit Card
     'credit card', 'creditcard', 'credit-card', 'credit_card',
@@ -603,7 +601,7 @@ def fetch_url(api_key, url):
     except:
         return ""
 
-# ====== محركات البحث ======
+# ====== 7 محركات قوية ======
 def search_google(api_key, dork, pages=30):
     all_urls = []
     tasks = []
@@ -728,43 +726,9 @@ def search_startpage(api_key, dork, pages=20):
                 pass
     return list(set(all_urls))
 
-def search_yep(api_key, dork, pages=20):
-    all_urls = []
-    tasks = []
-    for page in range(pages):
-        url = f'https://yep.com/web?q={urllib.parse.quote(dork)}&page={page+1}'
-        tasks.append(url)
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        futures = [ex.submit(fetch_url, api_key, u) for u in tasks]
-        for f in as_completed(futures):
-            try:
-                html = f.result()
-                if html:
-                    all_urls.extend(extract_urls(html))
-            except:
-                pass
-    return list(set(all_urls))
-
-def search_presearch(api_key, dork, pages=20):
-    all_urls = []
-    tasks = []
-    for page in range(pages):
-        url = f'https://presearch.com/search?q={urllib.parse.quote(dork)}&page={page+1}'
-        tasks.append(url)
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        futures = [ex.submit(fetch_url, api_key, u) for u in tasks]
-        for f in as_completed(futures):
-            try:
-                html = f.result()
-                if html:
-                    all_urls.extend(extract_urls(html))
-            except:
-                pass
-    return list(set(all_urls))
-
 def search_all_engines(api_key, dork):
     all_urls = []
-    with ThreadPoolExecutor(max_workers=10) as ex:
+    with ThreadPoolExecutor(max_workers=7) as ex:
         futures = [
             ex.submit(search_google, api_key, dork, 30),
             ex.submit(search_bing, api_key, dork, 50),
@@ -773,8 +737,6 @@ def search_all_engines(api_key, dork):
             ex.submit(search_qwant, api_key, dork, 30),
             ex.submit(search_mojeek, api_key, dork, 20),
             ex.submit(search_startpage, api_key, dork, 20),
-            ex.submit(search_yep, api_key, dork, 20),
-            ex.submit(search_presearch, api_key, dork, 20),
         ]
         for f in as_completed(futures):
             try:
@@ -786,7 +748,7 @@ def search_all_engines(api_key, dork):
                 pass
     return list(set(all_urls))
 
-# ====== فحص Cloudflare/Captcha ======
+# ====== فحص CF/Captcha ======
 def check_cf_captcha(url, api_key):
     try:
         payload = {'zone': ZONE, 'url': url, 'format': 'raw'}
